@@ -216,7 +216,7 @@ public class BurnoutScript : MonoBehaviour {
 		{
 			int time = ((int)_bomb.GetTime()) % 60;
 			int timeSum = time.ToString().Select(x => int.Parse(x.ToString())).ToList().Sum();
-			_pressTime = timeSum;
+			_pressTime = time;
 			if (_chosenTimeRestraint == TimeCondition.CARINDEX)
 			{
 				_pressCorrect = time.ToString().Any(x => int.Parse(x.ToString()) == _carIndex);
@@ -311,7 +311,7 @@ public class BurnoutScript : MonoBehaviour {
 					{
 						c = _bomb.GetIndicators().Count() + _bomb.GetPortPlateCount();
 					}
-					Debug.LogFormat("[Burnout #{0}]: Incorrect press time was given. Expected a press on {1} but was given {2} (sum at the time pressed).", _modID, c, _pressTime);
+					Debug.LogFormat("[Burnout #{0}]: Incorrect press time was given. Expected a press on {1} but was given {2} (at the time pressed).", _modID, c, _pressTime);
 				}
 				if (!_releaseCorrect) 
 				{
@@ -513,7 +513,7 @@ public class BurnoutScript : MonoBehaviour {
 			}
 			else // Otherwise
 			{
-				if (_bomb.GetIndicators().Count() % 2 == 0) // Even amount of Indicators
+				if (_bomb.GetOnIndicators().Count() % 2 == 0) // Even amount of lit Indicators
 				{
 					_trackInReverse = true;
 				}
@@ -558,12 +558,11 @@ public class BurnoutScript : MonoBehaviour {
 		}
 
 		// Getting the Time
-
-		if (carIndex.InRange(0, 6))
+		if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(0, 1, 2, 3, 4, 5, 6))
 		{
 			_chosenTimeRestraint = TimeCondition.CARINDEX;
 		}
-		else if (carIndex.InRange(7, 13))
+		else if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(7, 8, 9, 10, 11, 12, 13))
 		{
 			_chosenTimeRestraint = TimeCondition.FIRSTSERIAL;
 		}
@@ -576,9 +575,9 @@ public class BurnoutScript : MonoBehaviour {
 
 		// Checking for overrides
 
-		if (_bomb.GetPortPlates().All(x => x.Length != 0) && _bomb.GetOffIndicators().Count() == 0 && PortIsPresent(Port.PS2) && DoesSerialContain("C4TE6".Select(x => x).ToArray()))
+		if ((_bomb.GetPortPlateCount() == 0 || _bomb.GetPortPlates().All(x => x.Length != 0)) && _bomb.GetOffIndicators().Count() == 0 && PortIsPresent(Port.PS2) && DoesSerialContain("C4TE6".Select(x => x).ToArray()))
 		{
-			Debug.LogFormat("[Burnout #{0}]: No empty port plates, no unlit indicators and serial contains a character from 'C4TE6'. Overriding car to 'Drivers ED', the track condition to 'UNSAFE' and the time condition to 'NONE'.", _modID);
+			Debug.LogFormat("[Burnout #{0}]: No empty port plates, no unlit indicators, PS/2 port is present and serial contains a character from 'C4TE6'. Overriding car to 'Drivers ED', the track condition to 'UNSAFE' and the time condition to 'NONE'.", _modID);
 			_chosenCarName = "Drivers ED";
 			_chosenCondition = TrackCondition.UNSAFE;
 			_chosenTimeRestraint = TimeCondition.NONE;
@@ -589,11 +588,11 @@ public class BurnoutScript : MonoBehaviour {
 			_chosenCarName = "Pickup";
 			_chosenBoostAmount = 1;
 			_chosenTimeRestraint = TimeCondition.NONE;
-			if (Array.IndexOf(_carNames, _chosenCarName).InRange(0, 6))
+			if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(0, 1, 2, 3, 4, 5, 6))
 			{
 				_chosenTimeRestraint = TimeCondition.CARINDEX;
 			}
-			else if (Array.IndexOf(_carNames, _chosenCarName).InRange(7, 13))
+			else if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(7, 8, 9, 10, 11, 12, 13))
 			{
 				_chosenTimeRestraint = TimeCondition.FIRSTSERIAL;
 			}
@@ -642,6 +641,8 @@ public class BurnoutScript : MonoBehaviour {
 		Debug.LogFormat("[Burnout #{0}]: The chosen track, car name and condition is: {1}, {2} and {3}, respectively.", _modID, _chosenTrackName, _chosenCarName, _chosenCondition.ToString());
 		Debug.LogFormat("[Burnout #{0}]: The direction of the track is {1}.", _modID, _trackInReverse ? "in reverse" : "normal");
 		Debug.LogFormat("[Burnout #{0}]: The chosen boost amount is {1}.", _modID, _chosenBoostAmount);
+		Debug.LogFormat("[Burnout #{0}]: The desired order for all conditions to be entered is {1}.", _modID,
+			_conditionOrder.Select(x => new string[] { "Track Condition", "Car", "Boost Amount" }[x]).ToArray().Join(", "));
 		Debug.LogFormat("[Burnout #{0}]: The chosen time to boost at is {1} and release when {2}.", _modID, 
 			_chosenTimeRestraint == TimeCondition.CARINDEX ? Array.IndexOf(_carNames, _chosenCarName).ToString() : 
 			_chosenTimeRestraint == TimeCondition.FIRSTSERIAL ? _bomb.GetSerialNumberNumbers().First().ToString() : 
@@ -651,8 +652,6 @@ public class BurnoutScript : MonoBehaviour {
 			_chosenTimeRestraint == TimeCondition.FIRSTSERIAL ? "the last second digit is a multiple of 2" :
 			_chosenTimeRestraint == TimeCondition.INDIPLATES ? "either of the seconds digits is equal to the amount of battery holders" :
 			_chosenTimeRestraint == TimeCondition.NONE ? "none" : "none");
-		Debug.LogFormat("[Burnout #{0}]: The desired order for all conditions to be entered is {1}.", _modID,
-			_conditionOrder.Select(x => new string[] { "Track Condition", "Car", "Boost Amount" }[x]).ToArray().Join(", "));
 
 		_displayTexts[0].text = _chosenTrackName;
 		_tryAmount++;
@@ -1227,10 +1226,15 @@ public class BurnoutScript : MonoBehaviour {
 		_displayTexts[2].text = _conditionNames[_conditionIndex];
 		_conditionsSet = new bool[3];
 		_currentCondition = -1;
+		_curConIndex = 0;
 		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
 		foreach (MeshRenderer mr in buttonRenderers)
 		{
 			mr.material = _boostColors[0];
+		}
+		foreach (MeshRenderer mr in _boosterMeter)
+		{
+			mr.material.color = new Color32(39, 17, 17, 255);
 		}
 		_goButton.GetComponentInChildren<TextMesh>().text = "GO!";
 		_goButton.GetComponentInChildren<TextMesh>().characterSize = 0.001f;

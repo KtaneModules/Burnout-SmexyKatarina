@@ -26,7 +26,7 @@ public class ButtonMasherModule : MonoBehaviour
     {
         KMAudio.PlaySoundAtTransform("tick", this.transform);
 
-        string timerText = BombInfo.GetFormattedTime();
+        //string timerText = BombInfo.GetFormattedTime();
 
         if (currentCount < 50)
         {
