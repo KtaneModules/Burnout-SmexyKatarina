@@ -1,9 +1,8 @@
-﻿using System;
+﻿using KModkit;
+using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using KModkit;
 using rnd = UnityEngine.Random;
 
 public class BurnoutScript : MonoBehaviour {
@@ -83,14 +82,14 @@ public class BurnoutScript : MonoBehaviour {
 
 	bool _pressCorrect = false;
 	bool _releaseCorrect = false;
-	bool _firstRelease = true;
 	bool _reset = false;
 
 	int _pressIncorrectInt = 0;
 	int _releaseIncorrectInt = 0;
-	int _pressTime = 0;
+	string _pressTime = "";
 
 	Coroutine reset;
+	Coroutine booster;
 
 	string[] _ignore = new string[] { 
 		"Burnout", "14","A>N<D","Bamboozling Time Keeper","Brainf---","Busy Beaver","Cookie Jars","Divided Squares","Encrypted Hangman","Encryption Bingo","Forget Enigma","Forget Everything","Forget Infinity",
@@ -104,7 +103,6 @@ public class BurnoutScript : MonoBehaviour {
 
 	bool _halfComplete = false;
 	bool _fullComplete = false;
-
 
 	void Awake() {
 		_modID = _modIDCount++;
@@ -169,57 +167,21 @@ public class BurnoutScript : MonoBehaviour {
 	{
 		if (_checking) return;
 		reset = StartCoroutine(ResetByGo(1.5f));
-		if (_halfBomb && !_halfComplete) 
-		{
-			_module.HandleStrike();
-			Debug.LogFormat("[Burnout #{0}]: Half of the bomb has yet to be completed. Strike issued.", _modID);
-			return;
-		}
-		if (_fullBomb && !_fullComplete) 
-		{
-			_module.HandleStrike();
-			Debug.LogFormat("[Burnout #{0}]: The bomb is not yet at its full state. Strike issued.", _modID);
-			return;
-		}
-		if (!_started && (_carNames[_carIndex] != _chosenCarName || _conditionNames[_conditionIndex].ToUpper() != _chosenCondition.ToString() || _boosts != _chosenBoostAmount)) 
-		{
-			Debug.LogFormat("[Burnout #{0}]: Incorrect information given. Given {1} as the car, {2} as the condition and {3} as the boost amount, expected {4} as the car, {5} as the condition, {6} as the boost amount. Regenerating new answer...", 
-				_modID, _carNames[_carIndex], _conditionNames[_conditionIndex], _boosts, _chosenCarName, _chosenCondition.ToString(), _chosenBoostAmount);
-			GetComponent<KMBombModule>().HandleStrike();
-			ResetModule();
-			StartCoroutine(StrikeDisplay(2.5f));
-			return;
-		}
-
 		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
-
-		if (!_started) 
-		{
-			_started = true;
-			_goButton.GetComponentInChildren<TextMesh>().text = "BOOST!";
-			_goButton.GetComponentInChildren<TextMesh>().characterSize = 0.0008f;
-
-			foreach (MeshRenderer mr in buttonRenderers)
-			{
-				mr.material = _boostColors[2];
-			}
-
-
-			for (int i = 0; i <= _boosts - 1; i++)
-			{
-				buttonRenderers[i].material = _boostColors[3];
-			}
-			return;
-		}
 
 		if (_started)
 		{
 			int time = ((int)_bomb.GetTime()) % 60;
+			string sTime = time.ToString();
+			if (sTime.Length == 1) 
+			{
+				sTime = "0" + time;
+			}
 			int timeSum = time.ToString().Select(x => int.Parse(x.ToString())).ToList().Sum();
-			_pressTime = time;
+			_pressTime = sTime;
 			if (_chosenTimeRestraint == TimeCondition.CARINDEX)
 			{
-				_pressCorrect = time.ToString().Any(x => int.Parse(x.ToString()) == _carIndex);
+				_pressCorrect = sTime.Any(x => int.Parse(x.ToString()) == _carIndex);
 				_pressIncorrectInt = 0;
 			}
 			else if (_chosenTimeRestraint == TimeCondition.FIRSTSERIAL)
@@ -249,7 +211,7 @@ public class BurnoutScript : MonoBehaviour {
 				buttonRenderers[i].material = _boostColors[3];
 			}
 
-			StartCoroutine(DelayBoostMeter(0.3f));
+			booster = StartCoroutine(DelayBoostMeter(0.3f));
 
 		}
 
@@ -258,21 +220,69 @@ public class BurnoutScript : MonoBehaviour {
 	void ReleaseGoButton()
 	{
 		StopCoroutine(reset);
-		foreach (MeshRenderer mr in _boosterMeter)
+		if (booster != null) 
 		{
-			mr.material.color = new Color32(39, 17, 17, 255);
+			StopCoroutine(booster);
+			booster = null;
 		}
-		if (_firstRelease || _reset) 
+		if (_reset) 
 		{
-			_firstRelease = false;
 			_reset = false;
+			return;
+		}
+		if (_halfBomb && !_halfComplete)
+		{
+			_module.HandleStrike();
+			Debug.LogFormat("[Burnout #{0}]: Half of the bomb has yet to be completed. Strike issued.", _modID);
+			return;
+		}
+		if (_fullBomb && !_fullComplete)
+		{
+			_module.HandleStrike();
+			Debug.LogFormat("[Burnout #{0}]: The bomb is not yet at its full state. Strike issued.", _modID);
+			return;
+		}
+		if (!_started && (_carNames[_carIndex] != _chosenCarName || _conditionNames[_conditionIndex].ToUpper() != _chosenCondition.ToString() || _boosts != _chosenBoostAmount))
+		{
+			Debug.LogFormat("[Burnout #{0}]: Incorrect information given. Given {1} as the car, {2} as the condition and {3} as the boost amount, expected {4} as the car, {5} as the condition, {6} as the boost amount. Regenerating new answer...",
+				_modID, _carNames[_carIndex], _conditionNames[_conditionIndex], _boosts, _chosenCarName, _chosenCondition.ToString(), _chosenBoostAmount);
+			GetComponent<KMBombModule>().HandleStrike();
+			ResetModule();
+			StartCoroutine(StrikeDisplay(2.5f));
+			return;
+		}
+		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
+		if (!_started)
+		{
+			_started = true;
+			_goButton.GetComponentInChildren<TextMesh>().text = "BOOST!";
+			_goButton.GetComponentInChildren<TextMesh>().characterSize = 0.0008f;
+
+			foreach (MeshRenderer mr in buttonRenderers)
+			{
+				mr.material = _boostColors[2];
+			}
+
+
+			for (int i = 0; i <= _boosts - 1; i++)
+			{
+				buttonRenderers[i].material = _boostColors[3];
+			}
 			return;
 		}
 		if (_started) 
 		{
-
+			foreach (MeshRenderer mr in _boosterMeter)
+			{
+				mr.material.color = new Color32(39, 17, 17, 255);
+			}
 			_checking = true;
 			int release = (int)_bomb.GetTime() % 60;
+			string sRelease = release.ToString();
+			if (sRelease.Length == 1) 
+			{
+				sRelease = "0" + release;
+			}
 
 			if (_chosenTimeRestraint == TimeCondition.CARINDEX)
 			{
@@ -328,7 +338,7 @@ public class BurnoutScript : MonoBehaviour {
 					{
 						c = "either seconds digit is equal to the amount of battery holders";
 					}
-					Debug.LogFormat("[Burnout #{0}]: Incorrect release time was given. Expected a release when {1} but was given {2} (at the time released).", _modID, c, release);
+					Debug.LogFormat("[Burnout #{0}]: Incorrect release time was given. Expected a release when {1} but was given {2} (at the time released).", _modID, c, sRelease);
 				}
 				GetComponent<KMBombModule>().HandleStrike();
 				_audioSource.clip = _audioClips[1];
@@ -345,8 +355,16 @@ public class BurnoutScript : MonoBehaviour {
 				_modSolved = true;
 				_audioSource.clip = _audioClips[2];
 				_audioSource.Play();
+				_displayTexts[0].text = "POG!";
+				_displayTexts[1].text = "POG!";
+				_displayTexts[2].text = "POG!";
+				_goButton.GetComponentInChildren<TextMesh>().text = "POG!";
 				StartCoroutine(StopTheSound(5f));
 				return;
+			}
+			foreach (MeshRenderer mr in _boosterMeter)
+			{
+				mr.material.color = new Color32(39, 17, 17, 255);
 			}
 			_audioSource.clip = _audioClips[0];
 			_audioSource.Play();
@@ -557,7 +575,8 @@ public class BurnoutScript : MonoBehaviour {
 			_chosenBoostAmount = 3;
 		}
 
-		// Getting the Time
+		// Getting the Time Condition
+
 		if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(0, 1, 2, 3, 4, 5, 6))
 		{
 			_chosenTimeRestraint = TimeCondition.CARINDEX;
@@ -570,8 +589,6 @@ public class BurnoutScript : MonoBehaviour {
 		{
 			_chosenTimeRestraint = TimeCondition.INDIPLATES;
 		}
-
-		
 
 		// Checking for overrides
 
@@ -588,18 +605,6 @@ public class BurnoutScript : MonoBehaviour {
 			_chosenCarName = "Pickup";
 			_chosenBoostAmount = 1;
 			_chosenTimeRestraint = TimeCondition.NONE;
-			if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(0, 1, 2, 3, 4, 5, 6))
-			{
-				_chosenTimeRestraint = TimeCondition.CARINDEX;
-			}
-			else if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(7, 8, 9, 10, 11, 12, 13))
-			{
-				_chosenTimeRestraint = TimeCondition.FIRSTSERIAL;
-			}
-			else
-			{
-				_chosenTimeRestraint = TimeCondition.INDIPLATES;
-			}
 		}
 		if (_trackInReverse && _chosenCarName == "Touring Car") 
 		{
@@ -647,11 +652,11 @@ public class BurnoutScript : MonoBehaviour {
 			_chosenTimeRestraint == TimeCondition.CARINDEX ? Array.IndexOf(_carNames, _chosenCarName).ToString() : 
 			_chosenTimeRestraint == TimeCondition.FIRSTSERIAL ? _bomb.GetSerialNumberNumbers().First().ToString() : 
 			_chosenTimeRestraint == TimeCondition.INDIPLATES ? (_bomb.GetPortPlateCount() + _bomb.GetIndicators().Count()).ToString() :
-			_chosenTimeRestraint == TimeCondition.NONE ? "none" : "none",
+			_chosenTimeRestraint == TimeCondition.NONE ? "whenever" : "whenever",
 			_chosenTimeRestraint == TimeCondition.CARINDEX ? "the seconds digits are a multiple of 3" :
 			_chosenTimeRestraint == TimeCondition.FIRSTSERIAL ? "the last second digit is a multiple of 2" :
 			_chosenTimeRestraint == TimeCondition.INDIPLATES ? "either of the seconds digits is equal to the amount of battery holders" :
-			_chosenTimeRestraint == TimeCondition.NONE ? "none" : "none");
+			_chosenTimeRestraint == TimeCondition.NONE ? "whenever" : "whenever");
 
 		_displayTexts[0].text = _chosenTrackName;
 		_tryAmount++;
@@ -1217,7 +1222,6 @@ public class BurnoutScript : MonoBehaviour {
 	{
 		_pressCorrect = false;
 		_releaseCorrect = false;
-		_firstRelease = true;
 		_carIndex = 0;
 		_conditionIndex = 0;
 		_boosts = 0;
@@ -1227,6 +1231,7 @@ public class BurnoutScript : MonoBehaviour {
 		_conditionsSet = new bool[3];
 		_currentCondition = -1;
 		_curConIndex = 0;
+		_started = false;
 		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
 		foreach (MeshRenderer mr in buttonRenderers)
 		{
@@ -1293,6 +1298,7 @@ public class BurnoutScript : MonoBehaviour {
 	{
 		yield return new WaitForSeconds(time);
 		if (_started) yield break;
+		Debug.LogFormat("[Burnout #{0}]: Resetting module by holding go...", _modID);
 		ResetModule();
 		_reset = true;
 		yield break;

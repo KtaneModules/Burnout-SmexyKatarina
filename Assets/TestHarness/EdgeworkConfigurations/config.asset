@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Name: config
   m_EditorClassIdentifier: 
   SerialNumberType: 2
-  CustomSerialNumber: T22GP6
+  CustomSerialNumber: 5J4UW3
   TwoFactorResetTime: 30
   Widgets:
   - Type: 0
-    Count: 3
+    Count: 1
     PortPlateType: 0
     DVIPort: 0
     ParallelPort: 0
@@ -88,7 +88,59 @@ MonoBehaviour:
     BatteryCount: 0
     MinBatteries: 0
     MaxBatteries: 0
-    IndicatorLabel: 5
+    IndicatorLabel: 1
+    CustomLabel: 
+    IndicatorState: 0
+    CustomQueryKey: 
+    CustomData: 
+  - Type: 1
+    Count: 1
+    PortPlateType: 0
+    DVIPort: 0
+    ParallelPort: 1
+    PS2Port: 0
+    RJ45Port: 0
+    SerialPort: 1
+    StereoRCAPort: 0
+    ComponentVideoPort: 0
+    CompositeVideoPort: 0
+    HDMIPort: 0
+    VGAPort: 0
+    USBPort: 0
+    ACPort: 0
+    PCMCIAPort: 0
+    CustomPorts: []
+    BatteryType: 1
+    BatteryCount: 0
+    MinBatteries: 0
+    MaxBatteries: 0
+    IndicatorLabel: 1
+    CustomLabel: 
+    IndicatorState: 0
+    CustomQueryKey: 
+    CustomData: 
+  - Type: 1
+    Count: 1
+    PortPlateType: 0
+    DVIPort: 1
+    ParallelPort: 0
+    PS2Port: 1
+    RJ45Port: 0
+    SerialPort: 0
+    StereoRCAPort: 0
+    ComponentVideoPort: 0
+    CompositeVideoPort: 0
+    HDMIPort: 0
+    VGAPort: 0
+    USBPort: 0
+    ACPort: 0
+    PCMCIAPort: 0
+    CustomPorts: []
+    BatteryType: 1
+    BatteryCount: 0
+    MinBatteries: 0
+    MaxBatteries: 0
+    IndicatorLabel: 1
     CustomLabel: 
     IndicatorState: 0
     CustomQueryKey: 
