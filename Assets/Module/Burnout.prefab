@@ -2475,7 +2475,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ModuleType: kataBurnout
   ModuleDisplayName: Burnout
-  RequiresTimerVisibility: 0
+  RequiresTimerVisibility: 1
 --- !u!114 &114148310139865796
 MonoBehaviour:
   m_ObjectHideFlags: 1

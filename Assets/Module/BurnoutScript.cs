@@ -75,8 +75,6 @@ public class BurnoutScript : MonoBehaviour {
 	int _currentCondition;
 	int[] _conditionOrder = new int[3];
 
-	bool _halfBomb, _fullBomb, _immediately = false;
-
 	bool _started = false;
 	bool _checking = false;
 
@@ -91,18 +89,7 @@ public class BurnoutScript : MonoBehaviour {
 	Coroutine reset;
 	Coroutine booster;
 
-	string[] _ignore = new string[] { 
-		"Burnout", "14","A>N<D","Bamboozling Time Keeper","Brainf---","Busy Beaver","Cookie Jars","Divided Squares","Encrypted Hangman","Encryption Bingo","Forget Enigma","Forget Everything","Forget Infinity",
-		"Forget It Not","Forget Me Later","Forget Me Not","Forget Perspective","Forget The Colors","Forget Them All","Forget This","Forget Us Not","Four-Card Monte","Hogwarts","Iconic","Kugelblitz",
-		"Multitask","OmegaForget","Organization","Password Destroyer","Pressure","Purgatory","RPS Judging","Simon Forgets","Simon's Stages","Souvenir","Tallordered Keys","The Time Keeper","The Troll",
-		"The Heart","The Swan","The Twin","The Very Annoying Button","Timing is Everything","Turn The Key","Ultimate Custom Night","Übermodule" };
-
-	int _curSolved = 0;
-	int _halfModules = 0;
-	int _ignoredTotal = 0;
-
-	bool _halfComplete = false;
-	bool _fullComplete = false;
+	bool test = false;
 
 	void Awake() {
 		_modID = _modIDCount++;
@@ -126,41 +113,7 @@ public class BurnoutScript : MonoBehaviour {
 		_displayTexts[2].text = _conditionNames[_conditionIndex];
 		_today = DateTime.Now.DayOfWeek;
 		_startingTime = (int)_bomb.GetTime();
-		_ignore = _boss.GetIgnoredModules(_module, _ignore);
-		_halfModules = _bomb.GetSolvableModuleNames().Where(x => !_ignore.Contains(x)).Count() / 2;
-		_ignoredTotal = _bomb.GetSolvableModuleNames().Where(x => !_ignore.Contains(x)).Count();
-		Debug.LogFormat("[Burnout #{0}]: Half of the bomb solves is at {1} and the full bomb is at {2} solves.", _modID, _halfModules, _ignoredTotal);
 		GenerateAnswer();
-	}
-
-	void FixedUpdate() 
-	{
-		if (!_modSolved) {
-			if (_bomb.GetSolvedModuleNames().Count != _curSolved) 
-			{
-				_curSolved = _bomb.GetSolvedModuleNames().Count();
-				if (_immediately) 
-				{
-					_module.HandleStrike();
-					Debug.LogFormat("[Burnout #{0}]: Struck due to the module wanting to be solved immediately.", _modID);
-					return;
-				}
-				if (_halfBomb) 
-				{
-					if (_curSolved >= _halfModules) 
-					{
-						_halfComplete = true;
-					}
-				}
-				if (_fullBomb) 
-				{
-					if (_curSolved == _ignoredTotal) 
-					{
-						_fullComplete = true;
-					}
-				}
-			}
-		}
 	}
 
 	void GoButton()
@@ -230,25 +183,13 @@ public class BurnoutScript : MonoBehaviour {
 			_reset = false;
 			return;
 		}
-		if (_halfBomb && !_halfComplete)
-		{
-			_module.HandleStrike();
-			Debug.LogFormat("[Burnout #{0}]: Half of the bomb has yet to be completed. Strike issued.", _modID);
-			return;
-		}
-		if (_fullBomb && !_fullComplete)
-		{
-			_module.HandleStrike();
-			Debug.LogFormat("[Burnout #{0}]: The bomb is not yet at its full state. Strike issued.", _modID);
-			return;
-		}
 		if (!_started && (_carNames[_carIndex] != _chosenCarName || _conditionNames[_conditionIndex].ToUpper() != _chosenCondition.ToString() || _boosts != _chosenBoostAmount))
 		{
 			Debug.LogFormat("[Burnout #{0}]: Incorrect information given. Given {1} as the car, {2} as the condition and {3} as the boost amount, expected {4} as the car, {5} as the condition, {6} as the boost amount. Regenerating new answer...",
 				_modID, _carNames[_carIndex], _conditionNames[_conditionIndex], _boosts, _chosenCarName, _chosenCondition.ToString(), _chosenBoostAmount);
 			GetComponent<KMBombModule>().HandleStrike();
-			ResetModule();
 			StartCoroutine(StrikeDisplay(2.5f));
+			
 			return;
 		}
 		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
@@ -286,7 +227,7 @@ public class BurnoutScript : MonoBehaviour {
 
 			if (_chosenTimeRestraint == TimeCondition.CARINDEX)
 			{
-				_releaseCorrect = ((int)_bomb.GetTime() % 60) % 3 == 0;
+				_releaseCorrect = release % 3 == 0;
 				_releaseIncorrectInt = 0;
 			}
 			else if (_chosenTimeRestraint == TimeCondition.FIRSTSERIAL)
@@ -296,7 +237,7 @@ public class BurnoutScript : MonoBehaviour {
 			}
 			else if (_chosenTimeRestraint == TimeCondition.INDIPLATES)
 			{
-				_releaseCorrect = ((int)_bomb.GetTime() % 60).ToString().Select(x => int.Parse(x.ToString())).Any(x => x == _bomb.GetBatteryHolderCount());
+				_releaseCorrect = sRelease.Select(x => int.Parse(x.ToString())).Any(x => x == _bomb.GetBatteryHolderCount());
 				_releaseIncorrectInt = 2;
 			}
 			else
@@ -416,7 +357,7 @@ public class BurnoutScript : MonoBehaviour {
 					GetComponent<KMBombModule>().HandleStrike();
 					return;
 				}
-				_conditionsSet[_currentCondition] = true;
+				_conditionsSet[1] = true;
 				_curConIndex++;
 				Debug.LogFormat("[Burnout #{0}]: The car has been set to {1}.", _modID, _carNames[_carIndex]);
 				if (_curConIndex == 3) return;
@@ -430,7 +371,7 @@ public class BurnoutScript : MonoBehaviour {
 					GetComponent<KMBombModule>().HandleStrike();
 					return;
 				}
-				_conditionsSet[_currentCondition] = true;
+				_conditionsSet[0] = true;
 				_curConIndex++;
 				Debug.LogFormat("[Burnout #{0}]: The track condition has been set to {1}.", _modID, _conditionNames[_conditionIndex].ToUpper());
 				if (_curConIndex == 3) return;
@@ -468,7 +409,7 @@ public class BurnoutScript : MonoBehaviour {
 
 		_boosts = index + 1;
 
-		_conditionsSet[_currentCondition] = true;
+		_conditionsSet[2] = true;
 		_curConIndex++;
 		Debug.LogFormat("[Burnout #{0}]: The boost amount has been set to {1}.", _modID, _boosts);
 		if (_curConIndex == 3) return;
@@ -482,6 +423,7 @@ public class BurnoutScript : MonoBehaviour {
 		// Getting a random track
 
 		_chosenTrackName = _shortTrackNames[rnd.Range(0, _shortTrackNames.Length)];
+		//_chosenTrackName = "VY";
 
 		// Getting the Vehicle
 
@@ -489,106 +431,116 @@ public class BurnoutScript : MonoBehaviour {
 
 		_chosenCarName = _carNames[carIndex % 22];
 
-		// Getting the Direction of the Track
+        //_chosenCarName = "Custom";
 
-		if (_bomb.GetSerialNumberNumbers().Last() % 2 == 1) // Last digit is odd
-		{
-			if (_bomb.GetPorts().Distinct().Count() != _bomb.GetPortCount()) // Repeated ports
-			{
-				if (_bomb.GetBatteryCount() % 2 == 0) // Batteries Even
-				{
-					_trackInReverse = true;
-				}
-				else // Otherwise
-				{
-					_trackInReverse = false;
-				}
-			}
-			else // Otherwise
-			{
-				if (_bomb.GetOnIndicators().Count() > _bomb.GetOffIndicators().Count()) // Lit Indicators > Unlit Indicators
-				{
-					_trackInReverse = false;
-				}
-				else // Otherwise
-				{
-					_trackInReverse = true;
-				}
-			}
-		}
-		else // Otherwise
-		{
-			if (_bomb.GetPorts().Distinct().Count() != _bomb.GetPortCount()) // Repeated Ports
-			{
-				if (_bomb.GetBatteryCount() % 2 == 0) // Batteries Even
-				{
-					_trackInReverse = false;
-				}
-				else // Otherwise
-				{
-					_trackInReverse = true;
-				}
-			}
-			else // Otherwise
-			{
-				if (_bomb.GetOnIndicators().Count() % 2 == 0) // Even amount of lit Indicators
-				{
-					_trackInReverse = true;
-				}
-				else
-				{
-					_trackInReverse = false;
-				}
-			}
-		}
+        // Getting the Direction of the Track
+
+        if (_bomb.GetSerialNumberNumbers().Last() % 2 == 1) // Last digit is odd
+        {
+            if (_bomb.GetPorts().Distinct().Count() != _bomb.GetPortCount()) // Repeated ports
+            {
+                if (_bomb.GetBatteryCount() % 2 == 0) // Batteries Even
+                {
+                    _trackInReverse = true;
+                }
+                else // Otherwise
+                {
+                    _trackInReverse = false;
+                }
+            }
+            else // Otherwise
+            {
+                if (_bomb.GetOnIndicators().Count() > _bomb.GetOffIndicators().Count()) // Lit Indicators > Unlit Indicators
+                {
+                    _trackInReverse = false;
+                }
+                else // Otherwise
+                {
+                    _trackInReverse = true;
+                }
+            }
+        }
+        else // Otherwise
+        {
+            if (_bomb.GetPorts().Distinct().Count() != _bomb.GetPortCount()) // Repeated Ports
+            {
+                if (_bomb.GetBatteryCount() % 2 == 0) // Batteries Even
+                {
+                    _trackInReverse = false;
+                }
+                else // Otherwise
+                {
+                    _trackInReverse = true;
+                }
+            }
+            else // Otherwise
+            {
+                if (_bomb.GetOnIndicators().Count() % 2 == 0) // Even amount of lit Indicators
+                {
+                    _trackInReverse = true;
+                }
+                else
+                {
+                    _trackInReverse = false;
+                }
+            }
+        }
+
+        //_trackInReverse = true;
 
 		// Getting the Condition of the track
 
 		Debug.LogFormat("[Burnout #{0}]: On try #{1}, the information is: ", _modID, _tryAmount);
 
-		if (DoesSerialContain("D3ST7".ToCharArray()))
-		{
-			Debug.LogFormat("[Burnout #{0}]: The serial number contains a character from 'D3ST7', the track condition is 'UNSAFE'.", _modID);
-			_chosenCondition = TrackCondition.UNSAFE;
-		}
-		else
-		{
-			_chosenCondition = GetTrackCondition();
-		}
+        if (DoesSerialContain("D3ST7".ToCharArray()))
+        {
+            Debug.LogFormat("[Burnout #{0}]: The serial number contains a character from 'D3ST7', the track condition is 'UNSAFE'.", _modID);
+            _chosenCondition = TrackCondition.UNSAFE;
+        }
+        else
+        {
+            _chosenCondition = GetTrackCondition();
+        }
 
-		// Getting the Boost Multiplier
+        //_chosenCondition = TrackCondition.QUIET;
 
-		if (_bomb.GetBatteryCount() > _bomb.GetIndicators().Count())
-		{
-			_chosenBoostAmount = 2;
-		}
-		else if (_bomb.GetOnIndicators().Any(x => x == "FRK"))
-		{
-			_chosenBoostAmount = 4;
-		}
-		else if (_chosenCondition == TrackCondition.RAINY)
-		{
-			_chosenBoostAmount = 1;
-		}
-		else 
-		{
-			_chosenBoostAmount = 3;
-		}
+        // Getting the Boost Multiplier
 
-		// Getting the Time Condition
+        if (_bomb.GetBatteryCount() > _bomb.GetIndicators().Count())
+        {
+            _chosenBoostAmount = 2;
+        }
+        else if (_bomb.GetOnIndicators().Any(x => x == "FRK"))
+        {
+            _chosenBoostAmount = 4;
+        }
+        else if (_chosenCondition == TrackCondition.RAINY)
+        {
+            _chosenBoostAmount = 1;
+        }
+        else
+        {
+            _chosenBoostAmount = 3;
+        }
 
-		if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(0, 1, 2, 3, 4, 5, 6))
-		{
-			_chosenTimeRestraint = TimeCondition.CARINDEX;
-		}
-		else if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(7, 8, 9, 10, 11, 12, 13))
-		{
-			_chosenTimeRestraint = TimeCondition.FIRSTSERIAL;
-		}
-		else 
-		{
-			_chosenTimeRestraint = TimeCondition.INDIPLATES;
-		}
+        //_chosenBoostAmount = 3;
+
+        // Getting the Time Condition
+
+        if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(0, 1, 2, 3, 4, 5, 6))
+        {
+            _chosenTimeRestraint = TimeCondition.CARINDEX;
+        }
+        else if (Array.IndexOf(_carNames, _chosenCarName).EqualsAny(7, 8, 9, 10, 11, 12, 13))
+        {
+            _chosenTimeRestraint = TimeCondition.FIRSTSERIAL;
+        }
+        else
+        {
+            _chosenTimeRestraint = TimeCondition.INDIPLATES;
+        }
+
+        //_chosenTimeRestraint = TimeCondition.INDIPLATES;
 
 		// Checking for overrides
 
@@ -605,25 +557,6 @@ public class BurnoutScript : MonoBehaviour {
 			_chosenCarName = "Pickup";
 			_chosenBoostAmount = 1;
 			_chosenTimeRestraint = TimeCondition.NONE;
-		}
-		if (_trackInReverse && _chosenCarName == "Touring Car") 
-		{
-			
-			if (ModuleIdIsPresent("FlagsModule") || ModuleIdIsPresent("needyFlagIdentification"))
-			{
-				Debug.LogFormat("[Burnout #{0}]: Module wants to be solved at the end of the bomb.", _modID);
-				_fullBomb = true;
-			}
-			else
-			{
-				Debug.LogFormat("[Burnout #{0}]: Module wants to be solved for over half solves.", _modID);
-				_halfBomb = true;
-			}
-		}
-		if (_chosenCarName == "Race car" && _bomb.GetBatteryCount() == 3) 
-		{
-			_immediately = true;
-			Debug.LogFormat("[Burnout #{0}]: Module wants to be solved immediately.", _modID);
 		}
 
 		// Selecting the condition order
@@ -1291,6 +1224,7 @@ public class BurnoutScript : MonoBehaviour {
 			mr.material = _boostColors[0];
 		}
 		_checking = false;
+		ResetModule();
 		yield break;
 	}
 

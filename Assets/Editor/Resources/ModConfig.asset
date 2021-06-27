@@ -14,10 +14,10 @@ MonoBehaviour:
   id: kataBurnout
   title: Burnout
   author: Katarina
-  description: "Burnout v1.4\n\u201CI\u2019ll be honest with you, this thing is a
+  description: "Burnout v1.6\n\u201CI\u2019ll be honest with you, this thing is a
     real crash breaker!\"\r\n\r\nModule Idea by: Wolfy78\nImplemented by: Kat(arina)\r\n\r\nModule
     Id: kataBurnout\n\r\nNot TP-Supported.\r\n\r\nHTML Manual Version:\r\nSoon.\n\r\nIf
     there are any problems that you may have, contact me via Discord: Smexy Ahri#5259"
-  version: 1.4
+  version: 1.6
   outputFolder: build
   previewImage: {fileID: 2800000, guid: f9cda8a587085504b87be6feae795b8f, type: 3}
