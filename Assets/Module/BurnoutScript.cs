@@ -2,15 +2,14 @@
 using System;
 using System.Collections;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using rnd = UnityEngine.Random;
 
 public class BurnoutScript : MonoBehaviour {
 
 	public KMBombModule _module;
-	public KMBossModule _boss;
 	public KMBombInfo _bomb;
-	public KMAudio _audio;
 
 	public KMSelectable _goButton;
 	public KMSelectable[] _selectorButtons; // Car - Left Right, Condition - Left Right
@@ -81,6 +80,7 @@ public class BurnoutScript : MonoBehaviour {
 	bool _pressCorrect = false;
 	bool _releaseCorrect = false;
 	bool _reset = false;
+	bool _holding = false;
 
 	int _pressIncorrectInt = 0;
 	int _releaseIncorrectInt = 0;
@@ -88,8 +88,6 @@ public class BurnoutScript : MonoBehaviour {
 
 	Coroutine reset;
 	Coroutine booster;
-
-	bool test = false;
 
 	void Awake() {
 		_modID = _modIDCount++;
@@ -118,9 +116,10 @@ public class BurnoutScript : MonoBehaviour {
 
 	void GoButton()
 	{
-		if (_checking) return;
+		if (_checking || _holding) return;
 		reset = StartCoroutine(ResetByGo(1.5f));
 		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
+		_holding = true;
 
 		if (_started)
 		{
@@ -172,7 +171,9 @@ public class BurnoutScript : MonoBehaviour {
 
 	void ReleaseGoButton()
 	{
+		if (!_holding) return;
 		StopCoroutine(reset);
+		_holding = false;
 		if (booster != null) 
 		{
 			StopCoroutine(booster);
@@ -187,9 +188,9 @@ public class BurnoutScript : MonoBehaviour {
 		{
 			Debug.LogFormat("[Burnout #{0}]: Incorrect information given. Given {1} as the car, {2} as the condition and {3} as the boost amount, expected {4} as the car, {5} as the condition, {6} as the boost amount. Regenerating new answer...",
 				_modID, _carNames[_carIndex], _conditionNames[_conditionIndex], _boosts, _chosenCarName, _chosenCondition.ToString(), _chosenBoostAmount);
-			GetComponent<KMBombModule>().HandleStrike();
+			_module.HandleStrike();
+			_checking = true;
 			StartCoroutine(StrikeDisplay(2.5f));
-			
 			return;
 		}
 		MeshRenderer[] buttonRenderers = _boostButtons.Select(x => x.GetComponent<MeshRenderer>()).ToArray();
@@ -281,16 +282,17 @@ public class BurnoutScript : MonoBehaviour {
 					}
 					Debug.LogFormat("[Burnout #{0}]: Incorrect release time was given. Expected a release when {1} but was given {2} (at the time released).", _modID, c, sRelease);
 				}
-				GetComponent<KMBombModule>().HandleStrike();
+				_module.HandleStrike();
 				_audioSource.clip = _audioClips[1];
 				_audioSource.Play();
 				ResetModule();
+				_checking = false;
 				return;
 			}
 
 			if (_boosts == 0) 
 			{
-				GetComponent<KMBombModule>().HandlePass();
+				_module.HandlePass();
 				Debug.LogFormat("[Burnout #{0}]: All boosts are successful. Module solved.", _modID); 
 				_checking = false;
 				_modSolved = true;
@@ -354,7 +356,7 @@ public class BurnoutScript : MonoBehaviour {
 				if (_currentCondition != 1) 
 				{
 					Debug.LogFormat("[Burnout #{0}]: The car isn't the current condition to be selected.", _modID);
-					GetComponent<KMBombModule>().HandleStrike();
+					_module.HandleStrike();
 					return;
 				}
 				_conditionsSet[1] = true;
@@ -368,7 +370,7 @@ public class BurnoutScript : MonoBehaviour {
 				if (_currentCondition != 0) 
 				{
 					Debug.LogFormat("[Burnout #{0}]: The track condition isn't the current condition to be selected.", _modID);
-					GetComponent<KMBombModule>().HandleStrike();
+					_module.HandleStrike();
 					return;
 				}
 				_conditionsSet[0] = true;
@@ -390,7 +392,7 @@ public class BurnoutScript : MonoBehaviour {
 		if (_currentCondition != 2) 
 		{
 			Debug.LogFormat("[Burnout #{0}]: The boost amount isn't the current condition to be selected.", _modID);
-			GetComponent<KMBombModule>().HandleStrike();
+			_module.HandleStrike();
 			return;
 		}
 
@@ -1244,5 +1246,385 @@ public class BurnoutScript : MonoBehaviour {
 		_audioSource.Stop();
 		yield break;
 	}
+
+	//twitch plays
+	#pragma warning disable 414
+	private readonly string TwitchHelpMessage = @"!{0} car <name> [Locks in the specified car] | !{0} track <condition> [Locks in the specified track condition] | !{0} boost <#> [Locks in the specified boost amount] | !{0} go/submit [Clicks the 'GO!' button] | !{0} hold/release (##) [Holds/releases the 'BOOST!' button (optionally when the two seconds digits of the timer are '##')] | !{0} reset [Holds the 'GO!' button for three seconds]";
+	#pragma warning restore 414
+	private bool ZenModeActive;
+	IEnumerator ProcessTwitchCommand(string command)
+	{
+		if (Regex.IsMatch(command, @"^\s*reset\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (_started)
+            {
+				yield return "sendtochaterror The 'GO!' button is no longer present!";
+				yield break;
+            }
+			_goButton.OnInteract();
+			while (!_reset) yield return null;
+			_goButton.OnInteractEnded();
+		}
+		if (Regex.IsMatch(command, @"^\s*go|submit\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (_started)
+			{
+				yield return "sendtochaterror The 'GO!' button is no longer present!";
+				yield break;
+			}
+			_goButton.OnInteract();
+			_goButton.OnInteractEnded();
+		}
+		string[] parameters = command.Split(' ');
+		if (Regex.IsMatch(parameters[0], @"^\s*car\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length >= 2)
+			{
+				string name = "";
+				for (int i = 1; i < parameters.Length; i++)
+					name += parameters[i] + " ";
+				name = name.Trim();
+				string[] names = _carNames.Select(x => x.ToUpper()).ToArray();
+				if (!names.Contains(name.ToUpper()))
+                {
+					yield return "sendtochaterror!f The specified car name '" + name + "' is invalid!";
+					yield break;
+                }
+				if (_conditionsSet[1] || _started)
+                {
+					yield return "sendtochaterror The car has already been locked in!";
+					yield break;
+				}
+				int target = Array.IndexOf(names, name.ToUpper());
+				while (target < _carIndex)
+                {
+					_selectorButtons[0].OnInteract();
+					yield return new WaitForSeconds(.1f);
+				}
+				while (target > _carIndex)
+				{
+					_selectorButtons[1].OnInteract();
+					yield return new WaitForSeconds(.1f);
+				}
+				_selectorButtons[4].OnInteract();
+			}
+			else if (parameters.Length == 1)
+			{
+				yield return "sendtochaterror Please specify a car name!";
+			}
+		}
+		if (Regex.IsMatch(parameters[0], @"^\s*track\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2)
+			{
+				yield return "sendtochaterror Too many parameters!";
+			}
+			else if (parameters.Length == 2)
+			{
+				string[] names = _conditionNames.Select(x => x.ToUpper()).ToArray();
+				if (!names.Contains(parameters[1].ToUpper()))
+				{
+					yield return "sendtochaterror!f The specified track condition '" + parameters[1] + "' is invalid!";
+					yield break;
+				}
+				if (_conditionsSet[0] || _started)
+				{
+					yield return "sendtochaterror The track condition has already been locked in!";
+					yield break;
+				}
+				int target = Array.IndexOf(names, parameters[1].ToUpper());
+				while (target < _conditionIndex)
+				{
+					_selectorButtons[2].OnInteract();
+					yield return new WaitForSeconds(.1f);
+				}
+				while (target > _conditionIndex)
+				{
+					_selectorButtons[3].OnInteract();
+					yield return new WaitForSeconds(.1f);
+				}
+				_selectorButtons[5].OnInteract();
+			}
+			else if (parameters.Length == 1)
+			{
+				yield return "sendtochaterror Please specify a track condition!";
+			}
+		}
+		if (Regex.IsMatch(parameters[0], @"^\s*boost\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2)
+			{
+				yield return "sendtochaterror Too many parameters!";
+			}
+			else if (parameters.Length == 2)
+			{
+				int temp = -1;
+				if (!int.TryParse(parameters[1], out temp))
+                {
+					yield return "sendtochaterror!f The specified boost amount '" + parameters[1] + "' is invalid!";
+					yield break;
+				}
+				if (temp < 1 || temp > 4)
+				{
+					yield return "sendtochaterror The specified boost amount '" + parameters[1] + "' is invalid!";
+					yield break;
+				}
+				if (_conditionsSet[2] || _started)
+				{
+					yield return "sendtochaterror The boost amount has already been locked in!";
+					yield break;
+				}
+				_boostButtons[temp - 1].OnInteract();
+			}
+			else if (parameters.Length == 1)
+			{
+				yield return "sendtochaterror Please specify a boost amount!";
+			}
+		}
+		if (Regex.IsMatch(parameters[0], @"^\s*hold\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2)
+			{
+				yield return "sendtochaterror Too many parameters!";
+			}
+			else if (parameters.Length == 2)
+			{
+				int temp = -1;
+				if (!int.TryParse(parameters[1], out temp))
+				{
+					yield return "sendtochaterror!f The specified seconds digits '" + parameters[1] + "' are invalid!";
+					yield break;
+				}
+				if (temp < 0 || temp > 59 || parameters[1].Length != 2)
+				{
+					yield return "sendtochaterror The specified seconds digits '" + parameters[1] + "' are invalid!";
+					yield break;
+				}
+				if (!_started)
+				{
+					yield return "sendtochaterror The 'BOOST!' button is not present yet!";
+					yield break;
+				}
+				if (_holding)
+				{
+					yield return "sendtochaterror The 'BOOST!' button is already being held!";
+					yield break;
+				}
+				int ct = 0;
+				if (ZenModeActive)
+                {
+					int digits = (int)_bomb.GetTime() % 60;
+					while (digits != temp)
+                    {
+						digits++;
+						ct++;
+						if (digits == 60)
+							digits = 0;
+                    }
+                }
+				else
+				{
+					int digits = (int)_bomb.GetTime() % 60;
+					while (digits != temp)
+					{
+						digits--;
+						ct++;
+						if (digits == -1)
+							digits = 59;
+					}
+				}
+				if (ct > 15 || ct == 0) yield return "waiting music";
+				while ((int)_bomb.GetTime() % 60 == temp) yield return "trycancel Halted waiting to hold the 'BOOST!' button due to a cancel request.";
+				while ((int)_bomb.GetTime() % 60 != temp) yield return "trycancel Halted waiting to hold the 'BOOST!' button due to a cancel request.";
+				yield return "end waiting music";
+				_goButton.OnInteract();
+			}
+			else if (parameters.Length == 1)
+			{
+				if (!_started)
+				{
+					yield return "sendtochaterror The 'BOOST!' button is not present yet!";
+					yield break;
+				}
+				_goButton.OnInteract();
+			}
+		}
+		if (Regex.IsMatch(parameters[0], @"^\s*release\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2)
+			{
+				yield return "sendtochaterror Too many parameters!";
+			}
+			else if (parameters.Length == 2)
+			{
+				int temp = -1;
+				if (!int.TryParse(parameters[1], out temp))
+				{
+					yield return "sendtochaterror!f The specified seconds digits '" + parameters[1] + "' are invalid!";
+					yield break;
+				}
+				if (temp < 0 || temp > 59 || parameters[1].Length != 2)
+				{
+					yield return "sendtochaterror The specified seconds digits '" + parameters[1] + "' are invalid!";
+					yield break;
+				}
+				if (!_started)
+				{
+					yield return "sendtochaterror The 'BOOST!' button is not present yet!";
+					yield break;
+				}
+				if (!_holding)
+				{
+					yield return "sendtochaterror The 'BOOST!' button has not been held yet!";
+					yield break;
+				}
+				int ct = 0;
+				if (ZenModeActive)
+				{
+					int digits = (int)_bomb.GetTime() % 60;
+					while (digits != temp)
+					{
+						digits++;
+						ct++;
+						if (digits == 60)
+							digits = 0;
+					}
+				}
+				else
+				{
+					int digits = (int)_bomb.GetTime() % 60;
+					while (digits != temp)
+					{
+						digits--;
+						ct++;
+						if (digits == -1)
+							digits = 59;
+					}
+				}
+				if (ct > 15 || ct == 0) yield return "waiting music";
+				while ((int)_bomb.GetTime() % 60 == temp) yield return "trycancel Halted waiting to release the 'BOOST!' button due to a cancel request.";
+				while ((int)_bomb.GetTime() % 60 != temp) yield return "trycancel Halted waiting to release the 'BOOST!' button due to a cancel request.";
+				yield return "end waiting music";
+				_goButton.OnInteractEnded();
+			}
+			else if (parameters.Length == 1)
+			{
+				if (!_started)
+				{
+					yield return "sendtochaterror The 'BOOST!' button is not present yet!";
+					yield break;
+				}
+				_goButton.OnInteractEnded();
+			}
+		}
+	}
+
+	IEnumerator TwitchHandleForcedSolve()
+    {
+		if (_holding && _reset)
+			_goButton.OnInteractEnded();
+		while (_checking) yield return true;
+		if (!_started)
+        {
+			if ((_carNames[_carIndex] != _chosenCarName && _conditionsSet[1]) || (_conditionNames[_conditionIndex].ToUpper() != _chosenCondition.ToString() && _conditionsSet[0]) || (_boosts != _chosenBoostAmount && _conditionsSet[2]) || (_holding && (!_conditionsSet[0] || !_conditionsSet[1] || !_conditionsSet[2])))
+			{
+				if (!_holding)
+					_goButton.OnInteract();
+				while (!_reset) yield return true;
+				_goButton.OnInteractEnded();
+			}
+			for (int i = _curConIndex; i < 3; i++)
+            {
+				if (_currentCondition == 1)
+					yield return ProcessTwitchCommand("car " + _chosenCarName);
+				if (_currentCondition == 0)
+					yield return ProcessTwitchCommand("track " + _chosenCondition.ToString());
+				if (_currentCondition == 2)
+					yield return ProcessTwitchCommand("boost " + _chosenBoostAmount);
+				yield return new WaitForSeconds(.1f);
+			}
+			if (!_holding)
+				_goButton.OnInteract();
+			_goButton.OnInteractEnded();
+		}
+		if (_holding && !_pressCorrect)
+        {
+			_module.HandlePass();
+			_modSolved = true;
+			_audioSource.clip = _audioClips[2];
+			_audioSource.Play();
+			_displayTexts[0].text = "POG!";
+			_displayTexts[1].text = "POG!";
+			_displayTexts[2].text = "POG!";
+			_goButton.GetComponentInChildren<TextMesh>().text = "POG!";
+			StartCoroutine(StopTheSound(5f));
+		}
+		while (!_modSolved)
+        {
+			if (!_holding)
+            {
+				reCheck:
+				int time = ((int)_bomb.GetTime()) % 60;
+				string sTime = time.ToString();
+				if (sTime.Length == 1)
+				{
+					sTime = "0" + time;
+				}
+				bool goodTime = false;
+				int timeSum = time.ToString().Select(x => int.Parse(x.ToString())).ToList().Sum();
+				if (_chosenTimeRestraint == TimeCondition.CARINDEX)
+					goodTime = sTime.Any(x => int.Parse(x.ToString()) == _carIndex);
+				else if (_chosenTimeRestraint == TimeCondition.FIRSTSERIAL)
+					goodTime = _bomb.GetSerialNumberNumbers().First() == timeSum;
+				else if (_chosenTimeRestraint == TimeCondition.INDIPLATES)
+					goodTime = _bomb.GetPortPlateCount() + _bomb.GetIndicators().Count() == timeSum;
+				else if (_chosenTimeRestraint == TimeCondition.NONE)
+					goodTime = true;
+				if (!goodTime)
+                {
+					yield return true;
+					goto reCheck;
+				}
+                else
+                {
+					_goButton.OnInteract();
+					yield return new WaitForSeconds(.1f);
+				}
+			}
+			reCheck2:
+			int release = (int)_bomb.GetTime() % 60;
+			string sRelease = release.ToString();
+			if (sRelease.Length == 1)
+			{
+				sRelease = "0" + release;
+			}
+			bool goodTime2 = false;
+			if (_chosenTimeRestraint == TimeCondition.CARINDEX)
+				goodTime2 = release % 3 == 0;
+			else if (_chosenTimeRestraint == TimeCondition.FIRSTSERIAL)
+				goodTime2 = ((int)_bomb.GetTime() % 10) % 2 == 0;
+			else if (_chosenTimeRestraint == TimeCondition.INDIPLATES)
+				goodTime2 = sRelease.Select(x => int.Parse(x.ToString())).Any(x => x == _bomb.GetBatteryHolderCount());
+			else if (_chosenTimeRestraint == TimeCondition.NONE)
+				goodTime2 = true;
+			if (!goodTime2)
+			{
+				yield return true;
+				goto reCheck2;
+			}
+			else
+			{
+				_goButton.OnInteractEnded();
+				yield return new WaitForSeconds(.1f);
+			}
+		}
+    }
 
 }
