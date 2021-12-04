@@ -564,10 +564,8 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 4978585533688022}
-  - component: {fileID: 114312252875895856}
   - component: {fileID: 114520241080576970}
   - component: {fileID: 114108988641777288}
-  - component: {fileID: 114935853087346046}
   - component: {fileID: 114156459678934850}
   - component: {fileID: 114308105072673072}
   - component: {fileID: 82595999305174002}
@@ -2638,9 +2636,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _module: {fileID: 114108988641777288}
-  _boss: {fileID: 114935853087346046}
   _bomb: {fileID: 114520241080576970}
-  _audio: {fileID: 114312252875895856}
   _goButton: {fileID: 114679458089359662}
   _selectorButtons:
   - {fileID: 114452978219295492}
@@ -2669,7 +2665,7 @@ MonoBehaviour:
   - {fileID: 2100000, guid: b133663630608fd40b8e436c2c3dc94d, type: 2}
   _audioSource: {fileID: 82595999305174002}
   _audioClips:
-  - {fileID: 8300000, guid: c36973b599db78d45bf6af2ca22a5480, type: 3}
+  - {fileID: 8300000, guid: 153b2cc27d3c0514a9c5cad3940591bf, type: 3}
   - {fileID: 8300000, guid: f2365ed4051f99d44be39db5a0ae2635, type: 3}
   - {fileID: 8300000, guid: b60b76ba4247ddd439f150df0acba286, type: 3}
 --- !u!114 &114310713189934800
@@ -2694,17 +2690,6 @@ MonoBehaviour:
   AllowSelectionWrapY: 0
   ForceSelectionHighlight: 0
   ForceInteractionHighlight: 0
---- !u!114 &114312252875895856
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1758277834634452}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -1675560866, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &114315727145937040
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -3202,17 +3187,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   HighlightScale: {x: 1, y: 1, z: 1}
   OutlineAmount: 0
---- !u!114 &114935853087346046
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1758277834634452}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 96a2fc4ae3e690a498a0d85a2b5e0b99, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &114969668598274208
 MonoBehaviour:
   m_ObjectHideFlags: 1
