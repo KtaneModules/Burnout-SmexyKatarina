@@ -740,7 +740,7 @@ public class BurnoutScript : MonoBehaviour {
 				{
 					return TrackCondition.CLEAR;
 				}
-				else if (_bomb.GetIndicators().Any(x => x == "AND"))
+				else if (_bomb.GetIndicators().Any(x => x == "IND"))
 				{
 					return TrackCondition.RAINY;
 				}
